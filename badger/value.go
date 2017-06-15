@@ -52,6 +52,8 @@ const (
 var Corrupt error = errors.New("Unable to find log. Potential data corruption.")
 var CasMismatch error = errors.New("CompareAndSet failed due to counter mismatch.")
 
+var valuelog valueLog
+
 type logFile struct {
 	sync.RWMutex
 	path   string
