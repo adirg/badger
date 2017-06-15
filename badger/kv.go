@@ -41,6 +41,9 @@ type Options struct {
 	ValueDir string // Directory to store the value log in. Can be the same as Dir.
 	// Should exist and be writable.
 
+	MemcacheServer      string // Memcache server to the value in.
+	MemcacheConnections int    // Num of memcache client to create (one per reader)
+
 	// The following affect all levels of LSM tree.
 	MaxTableSize        int64 // Each table (or file) is at most this size.
 	LevelSizeMultiplier int   // Equals SizeOf(Li+1)/SizeOf(Li).
@@ -116,7 +119,7 @@ type KV struct {
 	imm       []*skl.Skiplist // Add here only AFTER pushing to flushChan.
 	opt       Options
 	lc        *levelsController
-	vlog      valueLog
+	vlog      ValueLog
 	vptr      valuePointer
 	arenaPool *skl.ArenaPool
 	writeCh   chan *request
@@ -161,6 +164,12 @@ func NewKV(opt *Options) (out *KV, err error) {
 
 	lc = out.closer.Register("memtable")
 	go out.flushMemtable(lc) // Need levels controller to be up.
+
+	if len(opt.MemcacheServer) > 0 {
+		out.vlog = &memcachelog
+	} else {
+		out.vlog = &valuelog
+	}
 
 	if err = out.vlog.Open(out, opt); err != nil {
 		return out, err
