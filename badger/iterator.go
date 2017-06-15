@@ -26,6 +26,7 @@ import (
 // KVItem is returned during iteration. Both the Key() and Value() output is only valid until
 // iterator.Next() is called.
 type KVItem struct {
+	Hint       int
 	wg         sync.WaitGroup
 	key        []byte
 	vptr       []byte

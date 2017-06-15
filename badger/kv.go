@@ -341,7 +341,7 @@ func (s *KV) fillItem(item *KVItem) error {
 
 	var vp valuePointer
 	vp.Decode(item.vptr)
-	entry, err := s.vlog.Read(vp, item.slice)
+	entry, err := s.vlog.Read(vp, item.slice, item.Hint)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to read from value log: %+v", vp)
 	}

@@ -701,7 +701,7 @@ func (l *valueLog) getFile(fid uint16) (*logFile, error) {
 }
 
 // Read reads the value log at a given location.
-func (l *valueLog) Read(p valuePointer, s *y.Slice) (e Entry, err error) {
+func (l *valueLog) Read(p valuePointer, s *y.Slice, hint int) (e Entry, err error) {
 	lf, err := l.getFile(p.Fid)
 	if err != nil {
 		return e, err
@@ -842,7 +842,7 @@ func (vlog *valueLog) doRunGC() error {
 
 		} else {
 			vlog.elog.Printf("Reason=%+v\n", r)
-			ne, err := vlog.Read(vp, nil)
+			ne, err := vlog.Read(vp, nil, 0)
 			if err != nil {
 				return errStop
 			}
