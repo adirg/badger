@@ -428,6 +428,7 @@ type valuePointer struct {
 	Fid    uint16
 	Len    uint32
 	Offset uint32
+	Key    uint32
 }
 
 // Encode encodes Pointer into byte buffer.
@@ -436,14 +437,16 @@ func (p valuePointer) Encode(b []byte) []byte {
 	binary.BigEndian.PutUint16(b[:2], p.Fid)
 	binary.BigEndian.PutUint32(b[2:6], p.Len)
 	binary.BigEndian.PutUint32(b[6:10], p.Offset)
-	return b[:10]
+	binary.BigEndian.PutUint32(b[10:14], p.Key)
+	return b[:14]
 }
 
 func (p *valuePointer) Decode(b []byte) {
-	y.AssertTrue(len(b) >= 10)
+	y.AssertTrue(len(b) >= 14)
 	p.Fid = binary.BigEndian.Uint16(b[:2])
 	p.Len = binary.BigEndian.Uint32(b[2:6])
 	p.Offset = binary.BigEndian.Uint32(b[6:10])
+	p.Key = binary.BigEndian.Uint32(b[10:14])
 }
 
 type valueLog struct {

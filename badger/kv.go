@@ -412,7 +412,7 @@ func (s *KV) shouldWriteValueToLSM(e Entry) bool {
 }
 
 func (s *KV) writeToLSM(b *request) error {
-	var offsetBuf [10]byte
+	var offsetBuf [14]byte
 	if len(b.Ptrs) != len(b.Entries) {
 		return errors.Errorf("Ptrs and Entries don't match: %+v", b)
 	}
@@ -688,7 +688,7 @@ func (s *KV) flushMemtable(lc *y.LevelCloser) error {
 
 		if ft.vptr.Fid > 0 || ft.vptr.Offset > 0 {
 			s.elog.Printf("Storing offset: %+v\n", ft.vptr)
-			offset := make([]byte, 10)
+			offset := make([]byte, 14)
 			s.Lock() // For vptr.
 			s.vptr.Encode(offset)
 			s.Unlock()
