@@ -98,10 +98,10 @@ var DefaultOptions = Options{
 	NumCompactors:            3,
 	NumLevelZeroTables:       5,
 	NumLevelZeroTablesStall:  10,
-	NumMemtables:             5,
+	NumMemtables:             20,
 	SyncWrites:               false,
 	ValueCompressionMinRatio: 2.0,
-	ValueCompressionMinSize:  1024,
+	ValueCompressionMinSize:  1 << 20,
 	ValueGCRunInterval:       10 * time.Minute,
 	ValueGCThreshold:         0.5, // Set to zero to not run GC.
 	ValueLogFileSize:         1 << 30,
