@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"golang.org/x/net/trace"
 
@@ -15,12 +16,14 @@ import (
 var memcachelog MemcacheLog
 
 type MemcacheLog struct {
-	mc      []*memcached.Client
-	curKey  uint32
-	opt     Options
-	kv      *KV
-	elog    trace.EventLog
-	encoder *entryEncoder
+	mc          []*memcached.Client
+	curKey      uint32
+	curKeyMutex sync.Mutex
+	opt         Options
+	kv          *KV
+	elog        trace.EventLog
+	encoder     *entryEncoder
+	writeCh     chan []*Entry
 }
 
 func (l *MemcacheLog) Open(kv *KV, opt *Options) error {
@@ -38,6 +41,12 @@ func (l *MemcacheLog) Open(kv *KV, opt *Options) error {
 		opt:          l.opt,
 		decompressed: bytes.NewBuffer(make([]byte, 1<<20)),
 		compressed:   make([]byte, 1<<20),
+	}
+
+	l.writeCh = make(chan []*Entry, 1000)
+
+	for idx := 0; idx < 10; idx++ {
+		go l.writeLoop(idx)
 	}
 
 	return nil
@@ -82,7 +91,6 @@ func (l *MemcacheLog) Read(p valuePointer, s *y.Slice, hint int) (e Entry, err e
 	return e, nil
 }
 
-// write is thread-unsafe by design and should not be called concurrently.
 func (l *MemcacheLog) write(reqs []*request) error {
 	for i := range reqs {
 		b := reqs[i]
@@ -104,24 +112,59 @@ func (l *MemcacheLog) write(reqs []*request) error {
 				return err
 			}
 			p.Len = uint32(plen)
+			l.curKeyMutex.Lock()
 			p.Key = l.curKey
-			req := &gomemcached.MCRequest{
-				Opcode:  gomemcached.SETQ,
-				VBucket: 0,
-				Key:     []byte(fmt.Sprint(p.Key)),
-				Cas:     0,
-				Opaque:  0,
-				Extras:  []byte{0, 0, 0, 0, 0, 0, 0, 0},
-				Body:    lbuf.Bytes()}
-
-			l.mc[0].Transmit(req)
-			if err != nil {
-				fmt.Println(err)
-			}
+			e.mcKey = l.curKey
 			l.curKey++
+			l.curKeyMutex.Unlock()
 			b.Ptrs = append(b.Ptrs, p)
+			l.writeCh <- b.Entries
 		}
 	}
+
+	return nil
+}
+
+func (l *MemcacheLog) writeLoop(idx int) {
+	for {
+		select {
+		case reqs := <-l.writeCh:
+			l.doWrite(reqs, idx)
+		}
+	}
+}
+
+// write is thread-unsafe by design and should not be called concurrently.
+func (l *MemcacheLog) doWrite(reqs []*Entry, idx int) error {
+	for i := range reqs {
+		e := reqs[i]
+		if !l.opt.SyncWrites && len(e.Value) < l.opt.ValueThreshold {
+			// No need to write to value log.
+			continue
+		}
+
+		var lbuf bytes.Buffer
+		_, err := l.encoder.Encode(e, &lbuf) // Now encode the entry into buffer.
+		if err != nil {
+			return err
+		}
+
+		key := e.mcKey
+		req := &gomemcached.MCRequest{
+			Opcode:  gomemcached.SETQ,
+			VBucket: 0,
+			Key:     []byte(fmt.Sprint(key)),
+			Cas:     0,
+			Opaque:  0,
+			Extras:  []byte{0, 0, 0, 0, 0, 0, 0, 0},
+			Body:    lbuf.Bytes()}
+
+		l.mc[idx].Transmit(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	return nil
 }
 
