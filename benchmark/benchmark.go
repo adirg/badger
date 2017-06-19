@@ -165,6 +165,7 @@ func printLatencyStats(latency []int64) {
 	fmt.Println("min: ", min)
 	fmt.Println("avg: ", avg)
 
-	p99idx := int(math.Ceil(0.99 * float64(n)))
+	p99idx := int(math.Floor(0.99 * float64(n)))
+	fmt.Println("p99idx: ", p99idx)
 	fmt.Println("p99 latency: ", latency[p99idx])
 }
