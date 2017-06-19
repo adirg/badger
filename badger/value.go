@@ -340,6 +340,8 @@ type Entry struct {
 	// Fields maintained internally.
 	offset     uint32
 	casCounter uint16
+
+	mcKey uint32
 }
 
 type entryEncoder struct {
